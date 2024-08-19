@@ -20,18 +20,21 @@ async function main() {
   let sierraCode, casmCode;
 
   try {
-    ({ sierraCode, casmCode } = await getCompiledCode("counter_Counter"));
+    ({ sierraCode, casmCode } = await getCompiledCode("workshop_Counter"));
   } catch (error: any) {
     console.log("Failed to read contract files");
     process.exit(1);
   }
+  
+  const constructorArgs = {
+    input: 1000,
+    initial_owner: String(process.env.DEPLOYER_ADDRESS ?? ""),
+    kill_switch_address:
+      "0x05f7151ea24624e12dde7e1307f9048073196644aa54d74a9c579a257214b542",
+  }
 
   const myCallData = new CallData(sierraCode.abi);
-  const constructor = myCallData.compile("constructor", {
-    initial_counter: 100,
-    address: "0x05f7151ea24624e12dde7e1307f9048073196644aa54d74a9c579a257214b542",
-    initial_owner: process.env.DEPLOYER_ADDRESS ?? "",
-  });
+  const constructor = myCallData.compile("constructor", constructorArgs);
   const deployResponse = await account0.declareAndDeploy({
     contract: sierraCode,
     casm: casmCode,
@@ -40,14 +43,21 @@ async function main() {
   });
 
   // Connect the new contract instance :
-  const myTestContract = new Contract(
-    sierraCode.abi,
-    deployResponse.deploy.contract_address,
-    provider
-  );
-  console.log(
-    `✅ Contract has been deploy with the address: ${myTestContract.address}`
-  );
+  try {
+    const myTestContract = new Contract(
+      sierraCode.abi,
+      deployResponse.deploy.contract_address,
+      provider
+    );
+    console.log(
+      `✅ Contract has been deploy with the address: ${myTestContract.address}`
+    );
+  }catch(error){
+    console.log(
+      `Deployment Failed`
+    );
+  }
+  
 }
 main()
   .then(() => process.exit(0))
